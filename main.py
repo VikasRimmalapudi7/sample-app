@@ -1,32 +1,28 @@
-import json
-from azure.identity import DefaultAzureCredential
+from flask import Flask, jsonify
+from azure.identity import ManagedIdentityCredential
 from azure.keyvault.secrets import SecretClient
+import json
 
-# Replace with your Key Vault name
+app = Flask(__name__)
+
 KEY_VAULT_NAME = 'pythonsampleapp-cert'
-# Replace with your secret name
 SECRET_NAME = 'sample-secret'
-
-# Construct the Key Vault URL
 key_vault_url = f"https://{KEY_VAULT_NAME}.vault.azure.net/"
-
-# Create a credential using Azure Identity
-credential = DefaultAzureCredential()
-
-# Create a SecretClient to interact with the Key Vault
+credential = ManagedIdentityCredential(client_id="c318642b-0415-490d-b0a4-1bdc3c6bda27")
 client = SecretClient(vault_url=key_vault_url, credential=credential)
 
-try:
-    # Retrieve the secret
-    secret = client.get_secret(SECRET_NAME)
-    
-    # Print the secret value (assumed to be JSON)
-    json_data = json.loads(secret.value)
-    
-    # Print each key-value pair line by line
-    print("Retrieved JSON secret:")
-    for key, value in json_data.items():
-        print(f"{key}: {value}")  # Print each key-value pair
+@app.route('/')
+def get_secret():
+    try:
+        # Retrieve the secret
+        secret = client.get_secret(SECRET_NAME)
+        json_data = json.loads(secret.value)
 
-except Exception as e:
-    print(f"An error occurred: {e}")
+        # Return the JSON data as an HTTP response
+        return jsonify(json_data)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=80)
